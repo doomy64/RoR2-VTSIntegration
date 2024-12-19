@@ -25,6 +25,7 @@ namespace VTSIntegration
             Log.Init(Logger);
             RoR2.CharacterBody.onBodyInventoryChangedGlobal += CharacterBody_onBodyInventoryChanged;
             RoR2.Run.onRunStartGlobal += OnRunStart;
+            RoR2.Stage.onStageStartGlobal += OnStageStart;
             VTSConfig.Init(this);
             VTSApi.Init();
             LogBookControls.Init();
@@ -117,6 +118,11 @@ namespace VTSIntegration
             lastInventory.Clear();
             OnEquipmentRemoved(lastEquipment);
             lastEquipment = EquipmentIndex.None;
+            updateInv = true;
+        }
+
+        public void OnStageStart(Stage stage)
+        {
             updateInv = true;
         }
 
