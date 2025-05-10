@@ -69,9 +69,9 @@ namespace VTSIntegration
             public ConfigEntry<string> entry { get; set; }
             public List<string> values { get; set; }
 
-            public ListConfigEntry(string section, string key, List<string> defaultValue, string description)
+            public ListConfigEntry(ConfigFile file, string section, string key, List<string> defaultValue, string description)
             {
-                entry = plugin.Config.Bind<string>(section, key, string.Join(",", defaultValue), description);
+                entry = file.Bind<string>(section, key, string.Join(",", defaultValue), description);
                 values = new List<string>();
                 values.AddRange(entry.Value.Split(","));
             }
@@ -119,6 +119,7 @@ namespace VTSIntegration
 
         }
 
+        public static ConfigFile modelConfig;
         public static ConfigEntry<string> address;
         public static ConfigEntry<string> authToken;
         public static ConfigEntry<float> brightness;
@@ -193,40 +194,72 @@ namespace VTSIntegration
         public static void Init(VTSIntegration p)
         {
             plugin = p;
+            //Placeholder while we wait for the API to give us a model
+            modelConfig = plugin.Config;
             address = plugin.Config.Bind<string>("General", "Address", "ws://localhost:8001", "Address for VTS API. Usually unnecessary to change this");
             authToken = plugin.Config.Bind<string>("General", "Token", "null", "Plugin Authentication for VTS API. Do not change this");
             brightness = plugin.Config.Bind<float>("General", "Brightness", 1.1f, "Change brightness for items sent to VTS");
             contrast = plugin.Config.Bind<float>("General", "Contrast", 2.0f, "Change contrast for items sent to VTS");
             gamma = plugin.Config.Bind<float>("General", "Gamma", 1.0f, "Change gamma for items sent to VTS");
 
-            blockedItems = new ListConfigEntry("General", "ItemBlacklist", defaultBlacklist, "Items that won't be sent to VTS. Add items by deleting the item in VTS. Remove items by pressing F2 while hovering over its logbook entry");
-            flippedItems = new ListConfigEntry("General", "FlippedItems", new List<string>(), "Items that will be flipped when sent to VTS. Add/remove items by flipping the item in VTS");
-            backgroundItems = new ListConfigEntry("General", "BackgroundItems", new List<string>(), "Items that will appear behind your model in VTS. Add/remove items by pressing F3 while hovering the item in your logbook");
-            forceEntries = new ListConfigEntry("General", "ForcedLogbookEntries", defaultForceEntries, "Items to force to appear in the logbook, for configuration in VTS");
+            forceEntries = new ListConfigEntry(plugin.Config, "General", "ForcedLogbookEntries", defaultForceEntries, "Items to force to appear in the logbook, for configuration in VTS");
+            GenerateModelConfigLists(plugin.Config);
             
             ItemCatalog.availability.onAvailable += ItemCatalog_onAvailable;
             EquipmentCatalog.availability.onAvailable += EquipmentCatalog_onAvailable;
         }
+
+        public static void LoadModelConfig(string modelID)
+        {
+            modelConfig = new ConfigFile($"{BepInEx.Paths.ConfigPath}/VTSmodels/{modelID}.cfg", true);
+            if (ItemCatalog.availability.available)
+            {
+                GenerateItemConfigs();
+            }
+            if (EquipmentCatalog.availability.available)
+            {
+                GenerateEquipmentConfigs();
+            }
+            GenerateModelConfigLists(modelConfig);
+        }
+
+        private static void GenerateModelConfigLists(ConfigFile file)
+        {
+            blockedItems = new ListConfigEntry(file, "General", "ItemBlacklist", defaultBlacklist, "Items that won't be sent to VTS. Add items by deleting the item in VTS. Remove items by pressing F2 while hovering over its logbook entry");
+            flippedItems = new ListConfigEntry(file, "General", "FlippedItems", new List<string>(), "Items that will be flipped when sent to VTS. Add/remove items by flipping the item in VTS");
+            backgroundItems = new ListConfigEntry(file, "General", "BackgroundItems", new List<string>(), "Items that will appear behind your model in VTS. Add/remove items by pressing F3 while hovering the item in your logbook");
+        }
+
         private static void ItemCatalog_onAvailable()
         {
-            plugin.Config.SaveOnConfigSet = false;
-            foreach (ItemDef item in ItemCatalog.allItemDefs)
-            {
-                GenerateConfig(item);
-            }
-            plugin.Config.SaveOnConfigSet = true;
-            plugin.Config.Save();
+            GenerateItemConfigs();
         }
 
         private static void EquipmentCatalog_onAvailable()
         {
-            plugin.Config.SaveOnConfigSet = false;
+            GenerateEquipmentConfigs();
+        }
+
+        private static void GenerateItemConfigs()
+        {
+            modelConfig.SaveOnConfigSet = false;
+            foreach (ItemDef item in ItemCatalog.allItemDefs)
+            {
+                GenerateConfig(item);
+            }
+            modelConfig.SaveOnConfigSet = true;
+            modelConfig.Save();
+        }
+
+        private static void GenerateEquipmentConfigs()
+        {
+            modelConfig.SaveOnConfigSet = false;
             foreach (EquipmentDef def in EquipmentCatalog.equipmentDefs)
             {
                 GenerateConfig(def);
             }
-            plugin.Config.SaveOnConfigSet = true;
-            plugin.Config.Save();
+            modelConfig.SaveOnConfigSet = true;
+            modelConfig.Save();
         }
         private static void GenerateConfig(ItemDef item)
         {
@@ -235,24 +268,26 @@ namespace VTSIntegration
                 return;
 
             string name = "Item." + item.name;
-            ConfigEntry<string> displayName = plugin.Config.Bind<string>(name, "display_name", Language.GetString(item.nameToken), "Display name for this item, used to make finding specific items easier. Changing this does nothing");
-            ConfigEntry<string> imageOverride = plugin.Config.Bind<string>(name, "image", "null", "VTS item to use instead of the in-game sprite");
-            ConfigEntry<Vector2> position = plugin.Config.Bind<Vector2>(name, "position", new Vector2(0.0f, 0.0f), "Stored position for this item. Can be changed by moving the item in VTS");
-            ConfigEntry<int> rotation = plugin.Config.Bind<int>(name, "rotation", 0, "Stored rotation for this item. With the item active in VTS, change with CTRL + Scroll Up/Down while hovering the item in your logbook");
-            ConfigEntry<float> size = plugin.Config.Bind<float>(name, "size", 0.32f, "Stored size for this item. With the item active in VTS, change with Scroll Up/Down while hovering the item in your logbook");
-            ConfigEntry<string> pinnedModel = plugin.Config.Bind<string>(name, "pinData", "{model:'null',mesh:'null'}", "Information for how this item is pinned to a model");
+            ConfigEntry<string> displayName = modelConfig.Bind<string>(name, "display_name", Language.GetString(item.nameToken), "Display name for this item, used to make finding specific items easier. Changing this does nothing");
+            ConfigEntry<string> imageOverride = modelConfig.Bind<string>(name, "image", "null", "VTS item to use instead of the in-game sprite");
+            ConfigEntry<Vector2> position = modelConfig.Bind<Vector2>(name, "position", new Vector2(0.0f, 0.0f), "Stored position for this item. Can be changed by moving the item in VTS");
+            ConfigEntry<int> rotation = modelConfig.Bind<int>(name, "rotation", 0, "Stored rotation for this item. With the item active in VTS, change with CTRL + Scroll Up/Down while hovering the item in your logbook");
+            ConfigEntry<float> size = modelConfig.Bind<float>(name, "size", 0.32f, "Stored size for this item. With the item active in VTS, change with Scroll Up/Down while hovering the item in your logbook");
+            ConfigEntry<string> pinnedModel = modelConfig.Bind<string>(name, "pinData", "{model:'null',mesh:'null'}", "Information for how this item is pinned to a model");
+            itemConfig.Remove(item.name);
             itemConfig.Add(item.name, new ItemConfig(displayName, imageOverride, position, rotation, size, pinnedModel));
         }
 
         private static void GenerateConfig(EquipmentDef def)
         {
             string name = "ItemEquipment." + def.name;
-            ConfigEntry<string> displayName = plugin.Config.Bind<string>(name, "display_name", Language.GetString(def.nameToken), "Display name for this item, used to make finding specific items easier. Changing this does nothing");
-            ConfigEntry<string> imageOverride = plugin.Config.Bind<string>(name, "image", "null", "VTS item to use instead of the in-game sprite");
-            ConfigEntry<Vector2> position = plugin.Config.Bind<Vector2>(name, "position", new Vector2(0.0f, 0.0f), "Stored position for this item. Can be changed by moving the item in VTS");
-            ConfigEntry<int> rotation = plugin.Config.Bind<int>(name, "rotation", 0, "Stored rotation for this item. With the item active in VTS, change with CTRL + Scroll Up/Down while hovering the item in your logbook");
-            ConfigEntry<float> size = plugin.Config.Bind<float>(name, "size", 0.32f, "Stored size for this item. With the item active in VTS, change with Scroll Up/Down while hovering the item in your logbook");
-            ConfigEntry<string> pinnedModel = plugin.Config.Bind<string>(name, "pinData", "{model:'null',mesh:'null'}", "Information for how this item is pinned to a model");
+            ConfigEntry<string> displayName = modelConfig.Bind<string>(name, "display_name", Language.GetString(def.nameToken), "Display name for this item, used to make finding specific items easier. Changing this does nothing");
+            ConfigEntry<string> imageOverride = modelConfig.Bind<string>(name, "image", "null", "VTS item to use instead of the in-game sprite");
+            ConfigEntry<Vector2> position = modelConfig.Bind<Vector2>(name, "position", new Vector2(0.0f, 0.0f), "Stored position for this item. Can be changed by moving the item in VTS");
+            ConfigEntry<int> rotation = modelConfig.Bind<int>(name, "rotation", 0, "Stored rotation for this item. With the item active in VTS, change with CTRL + Scroll Up/Down while hovering the item in your logbook");
+            ConfigEntry<float> size = modelConfig.Bind<float>(name, "size", 0.32f, "Stored size for this item. With the item active in VTS, change with Scroll Up/Down while hovering the item in your logbook");
+            ConfigEntry<string> pinnedModel = modelConfig.Bind<string>(name, "pinData", "{model:'null',mesh:'null'}", "Information for how this item is pinned to a model");
+            itemConfig.Remove(def.name);
             itemConfig.Add(def.name, new ItemConfig(displayName, imageOverride, position, rotation, size, pinnedModel));
         }
     }

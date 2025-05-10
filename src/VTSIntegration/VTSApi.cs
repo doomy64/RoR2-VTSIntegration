@@ -50,12 +50,14 @@ namespace VTSIntegration
             responseHandlers.Add("AuthenticationResponse", Handler_AuthResponse);
             responseHandlers.Add("APIStateResponse", Handler_APIStateResponse);
             responseHandlers.Add("PermissionResponse", Handler_PermissionResponse);
+            responseHandlers.Add("CurrentModelResponse", Handler_CurrentModelResponse);
             responseHandlers.Add("ItemEvent", Handler_ItemEvent);
             responseHandlers.Add("ItemLoadResponse", Handler_ItemLoadResponse);
             responseHandlers.Add("ItemListResponse", Handler_ItemListResponse);
             responseHandlers.Add("ItemMoveResponse", Handler_ItemMoveResponse);
             responseHandlers.Add("ItemPinResponse", Handler_ItemPinResponse);
             responseHandlers.Add("ModelClickedEvent", Handler_ModelClickedEvent);
+            responseHandlers.Add("ModelLoadedEvent", Handler_ModelLoadedEvent);
             responseHandlers.Add("APIError", Handler_APIError);
             ignoredResponses = new List<string>
             {
@@ -98,12 +100,19 @@ namespace VTSIntegration
                 {"subscribe", true },
                 {"config", new Dictionary<string, object> { } }
             });
+            SendRequest("EventSubscriptionRequest", new Dictionary<string, object>
+            {
+                {"eventName", "ModelLoadedEvent" },
+                {"subscribe", true },
+                {"config", new Dictionary<string, object>{ } }
+            });
             SendRequest("ItemListRequest", new Dictionary<string, object>
             {
                 { "includeAvailableSpots", true },
                 { "includeAvailableItemFiles", false },
                 { "includeItemInstancesInScene", false }
             });
+            SendRequest("CurrentModelRequest");
         }
 
         public static void SendRequest(string messageType, string requestID = null)
@@ -182,6 +191,14 @@ namespace VTSIntegration
             else
             {
                 OnAuthenticated();
+            }
+        }
+
+        public static void Handler_CurrentModelResponse(Dictionary<string, object> data, string requestID)
+        {
+            if (data["modelLoaded"].Equals(true))
+            {
+                VTSConfig.LoadModelConfig(data["modelID"].ToString());
             }
         }
 
@@ -415,6 +432,14 @@ namespace VTSIntegration
                         break;
                     }
                 }
+            }
+        }
+
+        public static void Handler_ModelLoadedEvent(Dictionary<string, object> data, string requestID)
+        {
+            if (data["modelLoaded"].Equals(true))
+            {
+                VTSConfig.LoadModelConfig(data["modelID"].ToString());
             }
         }
 
