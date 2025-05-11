@@ -90,10 +90,11 @@ If you enjoy the mod, consider
 
 `Mind the Bungus`
 
---[h2f_Pinkis](https://twitch.tv/h2f_Pinkis)
+--[Pinkis_Games](https://twitch.tv/Pinkis_Games)
 
 ## Credits
 
-h2f_Pinkis - For testing every hellish iteration of this plugin before release
+Pinkis_Games - For testing every hellish iteration of this plugin before release
 
 [sta](https://github.com/sta/websocket-sharp) - For the websocket-sharp library 
+
