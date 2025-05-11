@@ -10,9 +10,8 @@ namespace VTSIntegration
     {
         public struct PinData
         {
-            public PinData(string model, string mesh, List<int> vertexIDs, List<float> vertexWeights)
+            public PinData(string mesh, List<int> vertexIDs, List<float> vertexWeights)
             {
-                this.model = model;
                 this.mesh = mesh;
                 this.vertexIDs = vertexIDs;
                 this.vertexWeights = vertexWeights;
@@ -20,11 +19,9 @@ namespace VTSIntegration
 
             public static PinData Null()
             {
-                return new PinData("null", "null", null, null);
+                return new PinData("null", null, null);
             }
 
-            [JsonProperty]
-            public string model;
             [JsonProperty]
             public string mesh;
             [JsonProperty]
@@ -47,7 +44,7 @@ namespace VTSIntegration
 
             public PinData GetPinData()
             {
-                return pinInfo.Value.Equals("null") ? new PinData("null", "null", null, null) : JsonConvert.DeserializeObject<PinData>(pinInfo.Value);
+                return pinInfo.Value.Equals("null") ? new PinData("null", null, null) : JsonConvert.DeserializeObject<PinData>(pinInfo.Value);
             }
 
             public void SetPinData(PinData pinData)

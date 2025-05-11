@@ -30,6 +30,7 @@ namespace VTSIntegration
         public static Dictionary<string, Action<Dictionary<string, object>, string>> responseHandlers = new Dictionary<string, Action<Dictionary<string, object>, string>>();
         public static bool connected = false;
         public static float lastModelSize = 0.0f;
+        public static string modelID;
         public static List<int> availableOrdersFront = new List<int>();
         public static List<int> availableOrdersBack = new List<int>();
         public static List<string> itemsWaitingForSpace = new List<string>();
@@ -198,7 +199,8 @@ namespace VTSIntegration
         {
             if (data["modelLoaded"].Equals(true))
             {
-                VTSConfig.LoadModelConfig(data["modelID"].ToString());
+                modelID = data["modelID"].ToString();
+                VTSConfig.LoadModelConfig(modelID);
             }
         }
 
@@ -339,31 +341,27 @@ namespace VTSIntegration
                 string name = loadedItems[instanceID];
                 ItemConfig config = itemConfig[name];
                 PinData pinData = config.GetPinData();
-                if (pinData.model != "null")
+                SendRequest("ItemPinRequest", new Dictionary<string, object>
                 {
-                    SendRequest("ItemPinRequest", new Dictionary<string, object>
+                    { "pin", true },
+                    { "itemInstanceID", instanceID },
+                    { "angleRelativeTo", "RelativeToModel" },
+                    { "sizeRelativeTo", "RelativeToCurrentItemSize" },
+                    { "vertexPinType", "Provided" },
+                    { "pinInfo", new Dictionary<string, object>
                     {
-                        { "pin", true },
-                        { "itemInstanceID", instanceID },
-                        { "angleRelativeTo", "RelativeToModel" },
-                        { "sizeRelativeTo", "RelativeToCurrentItemSize" },
-                        { "vertexPinType", "Provided" },
-                        { "pinInfo", new Dictionary<string, object>
-                        {
-                            { "modelID", pinData.model },
-                            { "artMeshID", pinData.mesh },
-                            { "angle", itemConfig[name].rotation.Value },
-                            { "size", 0.0f },
-                            { "vertexID1", pinData.vertexIDs[0] },
-                            { "vertexID2", pinData.vertexIDs[1] },
-                            { "vertexID3", pinData.vertexIDs[2] },
-                            { "vertexWeight1", pinData.vertexWeights[0] },
-                            { "vertexWeight2", pinData.vertexWeights[1] },
-                            { "vertexWeight3", pinData.vertexWeights[2] }
-                        }
-                        }
-                    });
-                }
+                        { "modelID", modelID },
+                        { "artMeshID", pinData.mesh },
+                        { "angle", itemConfig[name].rotation.Value },
+                        { "size", 0.0f },
+                        { "vertexID1", pinData.vertexIDs[0] },
+                        { "vertexID2", pinData.vertexIDs[1] },
+                        { "vertexID3", pinData.vertexIDs[2] },
+                        { "vertexWeight1", pinData.vertexWeights[0] },
+                        { "vertexWeight2", pinData.vertexWeights[1] },
+                        { "vertexWeight3", pinData.vertexWeights[2] }
+                    } }
+                });
                 itemsBeingMoved.Remove(instanceID);
             }
         }
@@ -401,7 +399,6 @@ namespace VTSIntegration
                                 float.Parse(hitInfo["vertexWeight3"].ToString())
                             };
 
-                        pinData.model = hitInfo["modelID"].ToString();
                         pinData.mesh = hitInfo["artMeshID"].ToString();
                         pinData.vertexIDs = vertexIDs;
                         pinData.vertexWeights = vertexWeights;
@@ -415,7 +412,7 @@ namespace VTSIntegration
                                 { "vertexPinType", "Provided" },
                                 { "pinInfo", new Dictionary<string, object>
                                 {
-                                    { "modelID", pinData.model },
+                                    { "modelID", modelID },
                                     { "artMeshID", pinData.mesh },
                                     { "angle", itemConfig[item].rotation.Value },
                                     { "size", 0.0f },
@@ -439,7 +436,8 @@ namespace VTSIntegration
         {
             if (data["modelLoaded"].Equals(true))
             {
-                VTSConfig.LoadModelConfig(data["modelID"].ToString());
+                modelID = data["modelID"].ToString();
+                VTSConfig.LoadModelConfig(modelID);
             }
         }
 
@@ -574,7 +572,7 @@ namespace VTSIntegration
             {
                 string instance = loadedItems[name];
                 itemsBeingMoved.Add(instance);
-                if (unpinIfPinned && !itemConfig[name].GetPinData().model.Equals("null"))
+                if (unpinIfPinned)
                 {
                     SendRequest("ItemPinRequest", new Dictionary<string, object>
                     {
@@ -656,35 +654,27 @@ namespace VTSIntegration
             loadedItems.Add(item, instanceID);
             ItemConfig config = itemConfig[item];
             PinData pinData = config.GetPinData();
-            if (pinData.model != "null")
+            SendRequest("ItemPinRequest", new Dictionary<string, object>
             {
-                SendRequest("ItemPinRequest", new Dictionary<string, object>
+                { "pin", true },
+                { "itemInstanceID", instanceID },
+                { "angleRelativeTo", "RelativeToModel" },
+                { "sizeRelativeTo", "RelativeToCurrentItemSize" },
+                { "vertexPinType", "Provided" },
+                { "pinInfo", new Dictionary<string, object>
                 {
-                    { "pin", true },
-                    { "itemInstanceID", instanceID },
-                    { "angleRelativeTo", "RelativeToModel" },
-                    { "sizeRelativeTo", "RelativeToCurrentItemSize" },
-                    { "vertexPinType", "Provided" },
-                    { "pinInfo", new Dictionary<string, object>
-                    {
-                        { "modelID", pinData.model },
-                        { "artMeshID", pinData.mesh },
-                        { "angle", itemConfig[item].rotation.Value },
-                        { "size", 0.0f },
-                        { "vertexID1", pinData.vertexIDs[0] },
-                        { "vertexID2", pinData.vertexIDs[1] },
-                        { "vertexID3", pinData.vertexIDs[2] },
-                        { "vertexWeight1", pinData.vertexWeights[0] },
-                        { "vertexWeight2", pinData.vertexWeights[1] },
-                        { "vertexWeight3", pinData.vertexWeights[2] }
-                    }
-                    }
-                });
-            }
-            else
-            {
-                MoveItem(item, config.position.Value, config.rotation.Value, config.size.Value);
-            }
+                    { "modelID", modelID },
+                    { "artMeshID", pinData.mesh },
+                    { "angle", itemConfig[item].rotation.Value },
+                    { "size", 0.0f },
+                    { "vertexID1", pinData.vertexIDs[0] },
+                    { "vertexID2", pinData.vertexIDs[1] },
+                    { "vertexID3", pinData.vertexIDs[2] },
+                    { "vertexWeight1", pinData.vertexWeights[0] },
+                    { "vertexWeight2", pinData.vertexWeights[1] },
+                    { "vertexWeight3", pinData.vertexWeights[2] }
+                } }
+            });
         }
 
         public static Dictionary<TKey, TValue> Merge<TKey, TValue>(Dictionary<TKey, TValue>[] dictionaries)
