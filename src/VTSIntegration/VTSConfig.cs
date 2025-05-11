@@ -186,6 +186,7 @@ namespace VTSIntegration
             "ElitePoisonEquipment", //N'kuhana's Retort
         };
         private static VTSIntegration plugin;
+        private static string CONFIG_PATH = $"{BepInEx.Paths.ConfigPath}/VTSModels";
         public static Dictionary<string, ItemConfig> itemConfig = new Dictionary<string, ItemConfig>();
         
         public static void Init(VTSIntegration p)
@@ -202,13 +203,20 @@ namespace VTSIntegration
             forceEntries = new ListConfigEntry(plugin.Config, "General", "ForcedLogbookEntries", defaultForceEntries, "Items to force to appear in the logbook, for configuration in VTS");
             GenerateModelConfigLists(plugin.Config);
             
+            if (!System.IO.Directory.Exists(CONFIG_PATH))
+                System.IO.Directory.CreateDirectory(CONFIG_PATH);
+
             ItemCatalog.availability.onAvailable += ItemCatalog_onAvailable;
             EquipmentCatalog.availability.onAvailable += EquipmentCatalog_onAvailable;
         }
 
         public static void LoadModelConfig(string modelID)
         {
-            modelConfig = new ConfigFile($"{BepInEx.Paths.ConfigPath}/VTSmodels/{modelID}.cfg", true);
+            string configPath = $"{CONFIG_PATH}/{modelID}.cfg";
+            if (!System.IO.File.Exists(configPath))
+                System.IO.File.Copy(plugin.Config.ConfigFilePath, configPath);
+
+            modelConfig = new ConfigFile(configPath, true);
             if (ItemCatalog.availability.available)
             {
                 GenerateItemConfigs();
